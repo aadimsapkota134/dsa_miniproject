@@ -50,7 +50,7 @@ GridView::GridView(int widthGrid, int heightGrid, int markerSize, QChartView* pa
 }
 
 // Destructor
-GridView::GridView()
+GridView :: ~ GridView()
 {
     std::cerr << "Destroying Grid View \n";
     std::cerr << "Backend Grid: \n" <<
@@ -74,7 +74,7 @@ void GridView::setCurrentInteraction(int index)
 }
 
 // Setter: currentInteraction set up with enum
-void GridView::setCurrentInteraction(INTERACTION interaction)
+void GridView::setCurrentInteraction(INTERACTIONS interaction)
 {
     currentInteraction = interaction;
 }
