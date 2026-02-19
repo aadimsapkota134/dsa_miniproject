@@ -405,8 +405,8 @@ void GridView::handleClickedPoint(const QPointF& point)
         } else // the clicked point is an obstacle
         {
             // Deleting obstacle
-            freeElements->replace(clickedIndex);
-            obstacleElements->replace(clickedPoint);
+            freeElements->replace(clickedIndex, clickedPoint);
+            obstacleElements->replace(clickedPoint, nullQPoint);
 
             // Updating point as a free element in the backend grid
             gridNodes.Nodes[clickedIndex].obstacle = false;
@@ -434,8 +434,8 @@ void GridView::handleClickedPoint(const QPointF& point)
                 freeElements->replace(previousStartGridIndex, previousStartElement);
             }
             // Ensure the clicked point is removed from free/obstacle elements if it was there
-            freeElements->replace(clickedIndex);
-            obstacleElements->replace(clickedIndex);
+            freeElements->replace(clickedIndex, nullQPoint);
+            obstacleElements->replace(clickedIndex, nullQPoint);
 
             // Making sure the previous point is set as free in the backend grid
             gridNodes.Nodes[previousStartGridIndex].obstacle = false;
