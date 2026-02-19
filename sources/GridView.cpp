@@ -532,7 +532,7 @@ void GridView::setupNodes()
             newNode.xCoord = x;
             newNode.yCoord = y;
             newNode.visited = false;
-            newNode.obstacle = true;
+            newNode.obstacle = false;
             newNode.nextUp = false; // Used in BFS/DFS
             newNode.parent = nullptr; // Important to initialize pointers to nullptr
 
@@ -573,7 +573,7 @@ void GridView::setupNodes()
 int coordToIndex(int x, int y, int gridWidth)
 {
     // Assuming 1-based coordinates for x,y
-    return (x - 1) * gridWidth + (y - 1);
+    return (y - 1) * gridWidth + (x - 1); //sarbesh mula ulto lekhxau 
 }
 
 qreal GridView::computeDistanceBetweenPoints(const QPointF& pointA, const QPointF& pointB)
@@ -621,6 +621,8 @@ bool GridView::handleUpdatedScatterGridView(UPDATETYPES updateType, int updateIn
         replaceNextbyFree(updateIndex);     break;
     case FREETOOBSTACLE:
         replaceFreebyObstacle(updateIndex); break;
+    case OBSTACLETOFREE:
+        replaceObstaclebyFree(updateIndex); break; //obstacle to free wala logic naii xaina mula ko ho esto code lekhne paakhe
    
     default:
         break;
@@ -662,7 +664,7 @@ void GridView::replaceFreebyObstacle(int updateIndex)
         freeElements->replace(updateIndex, QPointF());
         obstacleElements->replace(updateIndex, obstaclePoint);
 
-        gridNodes.Nodes[updateIndex] = false;
+        gridNodes.Nodes[updateIndex].obstacle = true;//j mann lagyo teii lekhxan yrr k ho esto
 
     }
 
@@ -677,7 +679,7 @@ void GridView::replaceObstaclebyFree(int updateIndex)
     if (obstaclePoint != QPointF()){
         obstacleElements    ->replace(updateIndex, QPointF());
         freeElements        ->replace(updateIndex, obstaclePoint);
-        gridNodes.Nodes[updateIndex] = false;
+        gridNodes.Nodes[updateIndex].obstacle = false; //yaha ni .obstacle, kaun likhega?
 
     }else{
         std::cerr <<"Points chhaina doss \n";
@@ -788,4 +790,5 @@ int GridView::countDeadEnds() const {
         }
     }
     return deadEnds;
-} // baki kaam aba paxiii , tmkoc herxu chiya khadai 
+} 
+//hi sattu, byeeeeeeeee
