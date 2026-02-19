@@ -245,5 +245,275 @@ void GridView::populateGridMap(ARRANGEMENTS arrangement, bool reset)
 
 }
 
-//lekhdaa lekhdaa pagal bhaye ma
+//lekhdaa lekhdaa pagal bhaye ma 
 //ab tumhare hawaale watan saathiyon
+// Creating the QChart
+QChart* GridView::createChart()
+{
+    // Populate grid
+    GridView::populateGridMap(currentArrangement, false);
+
+    // Render
+    setRenderHint(QPainter::Antialiasing);
+
+
+    // Set marker shape
+    freeElements    ->setMarkerShape(QScatterSeries::MarkerShapeRectangle);
+    obstacleElements->setMarkerShape(QScatterSeries::MarkerShapeRectangle);
+    visitedElements ->setMarkerShape(QScatterSeries::MarkerShapeRectangle);
+    nextElements    ->setMarkerShape(QScatterSeries::MarkerShapeRectangle);
+    pathElements    ->setMarkerShape(QScatterSeries::MarkerShapeRectangle);
+    startElement    ->setMarkerShape(QScatterSeries::MarkerShapeRectangle);
+    endElement      ->setMarkerShape(QScatterSeries::MarkerShapeRectangle);
+
+    // Set marker size
+    setElementsMarkerSize();
+
+    //freeElements    ->setColor(QColorConstants::White);
+    obstacleElements->setColor(QColor("#1e272e"));      // Obstacle - charcoal black
+    visitedElements ->setColor(QColor("#34ace0"));      // Visited - cyan blue
+    nextElements    ->setColor(QColor("#ffb142"));      // Next - golden orange
+    pathElements    ->setColor(QColor("#ff5252"));      // Path - strong pink-red
+    startElement    ->setColor(QColor("#0be881"));      // Start - neon green
+    endElement      ->setColor(QColor("#ff3f34"));      // End - scarlet red
+
+
+    // Set opacity
+    freeElements    ->setOpacity(qreal(0.2));
+    visitedElements ->setOpacity(qreal(0.75));
+    nextElements    ->setOpacity(qreal(0.75));
+    pathElements    ->setOpacity(qreal(0.75));
+    startElement    ->setOpacity(qreal(0.95));
+    endElement      ->setOpacity(qreal(0.95));
+
+    // Set marker border color
+    freeElements    ->setBorderColor(QColorConstants::Black);
+    obstacleElements->setBorderColor(QColorConstants::Black);
+    visitedElements ->setBorderColor(QColorConstants::Black);
+    nextElements    ->setBorderColor(QColorConstants::Black);
+    pathElements    ->setBorderColor(QColorConstants::Black);
+    startElement    ->setBorderColor(QColorConstants::Black);
+    endElement      ->setBorderColor(QColorConstants::Black);
+
+    // Adding Series in the chart
+    chart->addSeries(freeElements);
+    chart->addSeries(obstacleElements);
+    chart->addSeries(visitedElements);
+    chart->addSeries(nextElements);
+    chart->addSeries(pathElements);
+    chart->addSeries(startElement);
+    chart->addSeries(endElement);
+    chart->addSeries(pathLine);
+
+    // Setting name of the elements
+    startElement    ->setName("Start");
+    endElement      ->setName("Goal");
+    freeElements    ->setName("Free");
+    obstacleElements->setName("Obstacles");
+    visitedElements ->setName("Visited");
+    nextElements    ->setName("Next");
+    pathElements    ->setName("Path");
+
+    // Not visible until start of simulation
+    visitedElements->setPointsVisible(false);
+    nextElements->setPointsVisible(false);
+    pathElements->setPointsVisible(false);
+
+    // Create legends
+    chart->legend()->setVisible(true);
+    chart->legend()->setAlignment(Qt::AlignBottom);
+    chart->legend()->setMarkerShape(QLegend::MarkerShapeFromSeries);
+
+    // Customize chart background
+    QLinearGradient backgroundGradient;
+    backgroundGradient.setStart(QPointF(0, 0));
+    backgroundGradient.setFinalStop(QPointF(0, 1));
+    backgroundGradient.setColorAt(0.0, QRgb(0xa8edea));  // Mint
+    backgroundGradient.setColorAt(1.0, QRgb(0xfed6e3));  // Pale pink
+
+
+
+
+    backgroundGradient.setCoordinateMode(QGradient::ObjectBoundingMode);
+    chart->setBackgroundBrush(backgroundGradient);
+
+    // Chart axis
+    chart->createDefaultAxes();
+    chart->setPlotAreaBackgroundVisible(false);
+
+    QList<QAbstractAxis*> axisX = chart->axes(Qt::Horizontal);
+    QList<QAbstractAxis*> axisY = chart->axes(Qt::Vertical);
+
+    axisX.first()->setRange(qreal(0.4), qreal(this->widthGrid  + 0.4));
+    axisY.first()->setRange(qreal(0.4), qreal(this->heightGrid + 0.5));
+
+    // Customize grid lines
+    axisX.first()->setGridLineVisible(false);
+    axisY.first()->setGridLineVisible(false);
+
+    // Hide axes
+    axisX.first()->setVisible(true);
+    axisX.first()->setVisible(true);
+
+    // Connecting signals
+    connect(freeElements, &QScatterSeries::clicked, this, &GridView::handleClickedPoint);
+    connect(obstacleElements, &QScatterSeries::clicked, this, &GridView::handleClickedPoint);
+
+    return chart;
+
+}
+
+void GridView::setElementsMarkerSize()
+{
+    // Set marker size of all elements
+    freeElements    ->setMarkerSize(markerSize);
+    obstacleElements->setMarkerSize(markerSize);
+    visitedElements ->setMarkerSize(markerSize);
+    nextElements    ->setMarkerSize(markerSize);
+    pathElements    ->setMarkerSize(markerSize);
+    startElement    ->setMarkerSize(markerSize);
+    endElement      ->setMarkerSize(markerSize);
+}
+
+void GridView::handleClickedPoint(const QPointF& point)
+{
+    // Copy of the point
+    QPointF clickedPoint = point;
+    std::cerr << "clickedPoint: (" << clickedPoint.x() << ", " << clickedPoint.y() << ")\n" ;
+
+    // Null QPoint
+    QPointF nullQPoint = QPointF();
+
+    // ClosestIndexPos
+    int clickedIndex = coordToIndex(clickedPoint, widthGrid);
+    std::cerr << "clickedIndex: " << clickedIndex << "\n";
+
+
+    // If the user choose to insert obstacles
+    if (currentInteraction == OBST)
+    {
+        // if the clicked point is free
+        if (gridNodes.Nodes[clickedIndex].obstacle == false)
+        {
+            // Creating obstacle
+            obstacleElements->replace(clickedIndex, clickedPoint);
+            freeElements->replace(clickedPoint, nullQPoint);
+
+            // Updating point as an obstacle in backend grid
+            gridNodes.Nodes[clickedIndex].obstacle = true;
+
+        } else // the clicked point is an obstacle
+        {
+            // Deleting obstacle
+            freeElements->replace(clickedIndex);
+            obstacleElements->replace(clickedPoint);
+
+            // Updating point as a free element in the backend grid
+            gridNodes.Nodes[clickedIndex].obstacle = false;
+        }
+
+    } else if (currentInteraction == START)
+    {
+        // Saving the previous starting point index
+        int     previousStartGridIndex  = gridNodes.startIndex;
+        QPointF previousStartElement    = startElement->points()[0];
+
+        std::cerr << "previousStartIndex: " << previousStartGridIndex << "\n";
+        std::cerr << "previousStartElement: (" << previousStartElement.x() << ", " << previousStartElement.y() << ")\n";
+
+        // Updating Starting point in backend grid
+        gridNodes.startIndex = clickedIndex;
+
+
+        // if the clicked point is free
+        if (gridNodes.Nodes[clickedIndex].obstacle == false)
+        {
+            // Modyfing StartElement QScatter Series
+            startElement->replace(0, clickedPoint);
+            if (previousStartGridIndex != gridNodes.endIndex) {
+                freeElements->replace(previousStartGridIndex, previousStartElement);
+            }
+            // Ensure the clicked point is removed from free/obstacle elements if it was there
+            freeElements->replace(clickedIndex);
+            obstacleElements->replace(clickedIndex);
+
+            // Making sure the previous point is set as free in the backend grid
+            gridNodes.Nodes[previousStartGridIndex].obstacle = false;
+
+        } else  // the clicked point is an obstacle
+        {
+            std::cerr << "currentInteraction == START - clickedPoint is an obstacle\n";
+
+            // We add the starting point here and the previous start becomes an obstacle
+            startElement->replace(0, clickedPoint);
+            // If the previous start point was not the end point, convert it to obstacle
+            if (previousStartGridIndex != gridNodes.endIndex) {
+                obstacleElements->replace(previousStartGridIndex, previousStartElement);
+            }
+            // Ensure the clicked point is removed from free/obstacle elements if it was there
+            freeElements->replace(clickedIndex, nullQPoint);
+            obstacleElements->replace(clickedIndex, nullQPoint);
+
+            // Making sure the point is set as an obstacle in the backend grid
+            gridNodes.Nodes[previousStartGridIndex].obstacle = true;
+        }
+        std::cerr << "new start element: (" << startElement->points()[0].x() << ", " << startElement->points()[0].y() << ")\n";
+
+    } else if (currentInteraction == END)
+    {
+
+        // Saving the previous ending point index
+        int previousEndGridIndex = gridNodes.endIndex;
+        QPointF previousEndElement = endElement->points()[0];
+
+        std::cerr << "previousEndIndex: " << previousEndGridIndex << "\n";
+        std::cerr << "previousEndElement: (" << previousEndElement.x() << ", " << previousEndElement.y() << ")\n";
+
+        // Updating ending point in backend grid
+        gridNodes.endIndex = clickedIndex;
+
+        // if the clicked point is free
+        if (gridNodes.Nodes[clickedIndex].obstacle == false)
+        {
+            std::cerr << "currentInteraction == END - clickedPoint is free \n";
+
+            // We add the ending point here and the previous end becomes a free element
+            endElement->replace(0, clickedPoint);
+            // Replace the previous end point in freeElements, only if it wasn't the start point
+            if (previousEndGridIndex != gridNodes.startIndex) {
+                freeElements->replace(previousEndGridIndex, previousEndElement);
+            }
+            // Ensure the clicked point is removed from free/obstacle elements if it was there
+            freeElements->replace(clickedIndex, nullQPoint);
+            obstacleElements->replace(clickedIndex, nullQPoint);
+
+            // Making sure the previous end point is set as free in the backend grid
+            gridNodes.Nodes[previousEndGridIndex].obstacle = true ;
+
+        } else  // the clicked point is an obstacle
+        {
+            // We add the ending point here and the previous end becomes a free element
+            endElement->replace(previousEndElement, clickedPoint);
+            if (previousEndGridIndex != gridNodes.startIndex) {
+                obstacleElements->replace(previousEndGridIndex, previousEndElement);
+            }
+            // Ensure the clicked point is removed from free/obstacle elements if it was there
+            freeElements->replace(clickedIndex, nullQPoint);
+            obstacleElements->replace(clickedIndex, nullQPoint);
+
+            // Making sure the previous end point is set as obstacle in the backend grid
+            gridNodes.Nodes[previousEndGridIndex].obstacle = true;
+        }
+        std::cerr << "new end element: (" << endElement->points()[0].x() << ", " << endElement->points()[0].y() << ")\n";
+
+    } else if (currentInteraction == NOINTERACTION)
+    {
+        QMessageBox::information(this, "Information", "Please select an interaction type");
+
+    } else if (simulationRunning == true)
+    {
+        QMessageBox::information(this, "Information", "Please stop the simulation first");
+    }
+
+
+}
