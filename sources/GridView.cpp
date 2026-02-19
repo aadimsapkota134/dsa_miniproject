@@ -508,11 +508,11 @@ void GridView::handleClickedPoint(const QPointF& point)
 
     } else if (currentInteraction == NOINTERACTION)
     {
-        QMessageBox::information(this, "Information", "Please select an interaction type");
+        QMessageBox::information(this, "Information", "Interaction select garnuhos pileeeezzzzzz "); 
 
     } else if (simulationRunning == true)
     {
-        QMessageBox::information(this, "Information", "Please stop the simulation first");
+        QMessageBox::information(this, "Information", "Kripaya Simulation bandha garnuhos :) ");
     }
 
 
