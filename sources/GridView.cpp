@@ -517,3 +517,275 @@ void GridView::handleClickedPoint(const QPointF& point)
 
 
 }
+void GridView::setupNodes()
+{
+    // Clear any existing nodes from previous grid configurations
+    gridNodes.Nodes.clear();
+    gridNodes.Nodes.reserve(widthGrid * heightGrid); 
+
+    // Populate the Nodes vector with new Node objects
+    for (int y = 1; y <= heightGrid; ++y) // Assuming y-coords start from 1
+    {
+        for (int x = 1; x <= widthGrid; ++x) // Assuming x-coords start from 1
+        {
+            Node newNode;
+            newNode.xCoord = x;
+            newNode.yCoord = y;
+            newNode.visited = false;
+            newNode.obstacle = true;
+            newNode.nextUp = false; // Used in BFS/DFS
+            newNode.parent = nullptr; // Important to initialize pointers to nullptr
+
+            gridNodes.Nodes.push_back(newNode);
+        }
+    } 
+
+    gridNodes.startIndex = coordToIndex(1, 1, widthGrid); // Assuming (1,1) is start
+    gridNodes.endIndex = coordToIndex(widthGrid, heightGrid, widthGrid); // Assuming (width, height) is end
+
+    qDebug() << "GridView: setupNodes() completed. Grid dimensions: " << widthGrid << "x" << heightGrid;
+    qDebug() << "GridView: gridNodes.Nodes.size(): " << gridNodes.Nodes.size();
+    qDebug() << "GridView: startIndex: " << gridNodes.startIndex << ", endIndex: " << gridNodes.endIndex;
+
+
+    freeElements->clear();
+    obstacleElements->clear();
+    visitedElements->clear();
+    nextElements->clear();
+    pathElements->clear();
+    pathLine->clear();
+    startElement->clear();
+    endElement->clear();
+
+    // Re-add free elements for the new grid
+    for (const auto& node : gridNodes.Nodes) {
+        if (!node.obstacle) {
+            freeElements->append(QPointF(node.xCoord, node.yCoord));
+        }
+    }
+
+    // Re-add start and end elements
+    startElement->append(QPointF(gridNodes.Nodes[gridNodes.startIndex].xCoord, gridNodes.Nodes[gridNodes.startIndex].yCoord));
+    endElement->append(QPointF(gridNodes.Nodes[gridNodes.endIndex].xCoord, gridNodes.Nodes[gridNodes.endIndex].yCoord));
+}
+
+// Ensure coordToIndex exists and is correct in GridView.cpp or a utility function
+int coordToIndex(int x, int y, int gridWidth)
+{
+    // Assuming 1-based coordinates for x,y
+    return (x - 1) * gridWidth + (y - 1);
+}
+
+qreal GridView::computeDistanceBetweenPoints(const QPointF& pointA, const QPointF& pointB)
+{
+    return qSqrt(   std::pow(pointA.x() - pointB.x(), 2)
+                 + std::pow(pointA.y() - pointB.y(), 2));
+}
+
+int coordToIndex(const QPointF& point, int widthGrid)
+{
+    return (point.y() - 1) * widthGrid + point.x() - 1;
+}
+
+
+
+
+void GridView::AlgorithmView(bool on)
+{
+    if (on){
+        nextElements    ->setPointsVisible(true);
+        pathElements    ->setPointsVisible(true);
+        visitedElements ->setPointsVisible(true);
+
+
+    }else{
+     // Yo aayusha, kaam kei xaina, malai kaam lagaucha je ma ni :/
+
+    }
+
+}
+
+
+// Updating the view (for the path planning algorithms)
+bool GridView::handleUpdatedScatterGridView(UPDATETYPES updateType, int updateIndex)
+{
+
+    switch (updateType) {
+    case VISIT:
+        replaceNextbyVisited(updateIndex);  break;
+    case NEXT:
+        replaceFreebyNext(updateIndex);     break;
+    case PATH:
+        replaceVisitedbyPath(updateIndex);  break;
+    case FREE:
+        replaceNextbyFree(updateIndex);     break;
+    case FREETOOBSTACLE:
+        replaceFreebyObstacle(updateIndex); break;
+   
+    default:
+        break;
+    }
+    return true;
+}
+bool GridView::handleUpdatedLineGridView(QPointF updatePoint, bool addingPoint, bool clearPriorToUpdate)
+{
+    if (clearPriorToUpdate){
+        pathLine->clear();
+    }
+    updateLine(updatePoint, addingPoint);
+
+    return true;
+}
+
+// Replacing functions
+
+void GridView::replaceFreebyVisited(int updateIndex)
+{
+    // Aahile ko  node free chaaaa, mero aajadi jasto
+    QList<QPointF> freeElementsPoints = freeElements->points();
+    QPointF visitedPoint = freeElementsPoints[updateIndex];
+
+    if (visitedPoint !=QPointF())
+    {
+        freeElements->replace(updateIndex, QPointF());
+        visitedElements->replace(updateIndex, visitedPoint);
+    }
+}
+
+void GridView::replaceFreebyObstacle(int updateIndex)
+{
+    // Current node is free
+    QList<QPointF> freeElementsPoints = freeElements->points();
+    QPointF obstaclePoint = freeElementsPoints[updateIndex];
+
+    if (obstaclePoint !=QPointF()){
+        freeElements->replace(updateIndex, QPointF());
+        obstacleElements->replace(updateIndex, obstaclePoint);
+
+        gridNodes.Nodes[updateIndex] = false;
+
+    }
+
+}
+
+void GridView::replaceObstaclebyFree(int updateIndex)
+{
+    // Current node is obstacle
+    QList<QPointF> obstacleElementsPoints = obstacleElements->points();
+    QPointF obstaclePoint = obstacleElementsPoints[updateIndex];
+
+    if (obstaclePoint != QPointF()){
+        obstacleElements    ->replace(updateIndex, QPointF());
+        freeElements        ->replace(updateIndex, obstaclePoint);
+        gridNodes.Nodes[updateIndex] = false;
+
+    }else{
+        std::cerr <<"Points chhaina doss \n";
+    }
+}
+
+void GridView::replaceNextbyVisited(int updateIndex)
+{
+    // Current node is next
+    QList<QPointF> nextElementsPoints = nextElements->points();
+    QPointF visitedPoint = nextElementsPoints[updateIndex];
+
+    if (visitedPoint !=QPointF())
+    {
+        nextElements->replace(updateIndex, QPointF());
+        visitedElements->replace(updateIndex, visitedPoint);
+    }
+}
+
+void GridView::replaceVisitedbyPath(int updateIndex)
+{
+    // Current node is visited
+    QList<QPointF> visitedElementsPoints = visitedElements->points();
+    QPointF pathPoint = visitedElementsPoints[updateIndex];
+
+    if (pathPoint !=QPointF())
+    {
+        visitedElements ->replace(updateIndex, QPointF());
+        pathElements    ->replace(updateIndex, pathPoint);
+    }
+}
+
+void GridView::replaceFreebyNext(int updateIndex)
+{
+    // Current node is free
+    QList<QPointF> freeElementsPoints = freeElements->points();
+    QPointF nextPoint = freeElementsPoints[updateIndex];
+
+    if (nextPoint !=QPointF()){
+        freeElements->replace(updateIndex, QPointF());
+        nextElements->replace(updateIndex, nextPoint);
+    }else{
+        std::cerr <<"No points \n";
+    }
+}
+
+void GridView::replaceNextbyFree(int updateIndex)
+{
+    // Current node is next
+    QList<QPointF> nextElementsPoints = nextElements->points();
+    QPointF freePoint = nextElementsPoints[updateIndex];
+
+    if (freePoint != QPointF()){
+        nextElements    ->replace(updateIndex, QPointF());
+        freeElements    ->replace(updateIndex, freePoint);
+    }else{
+        std::cerr <<"No points \n";
+    }
+}
+
+void GridView::updateLine(QPointF updatePoint, bool addingPoint)
+{
+    if (addingPoint){
+        pathLine->append(updatePoint);
+    }else{
+        pathLine->replace(pathLine->points().size() - 1, updatePoint);
+    }
+}
+int GridView::getPathLength() const
+{
+
+    return 0; // yo actual path length calculated hunxaaa ani pass hunxa  by PathAlgorithm
+}
+
+
+int GridView::countDeadEnds() const {
+    int deadEnds = 0;
+    for (const Node& node : gridNodes.Nodes) {
+        if (node.obstacle) {
+            continue; // Obstacles are not dead ends
+        } 
+
+        int wallCount = 0;
+        // Check 4-directional neighbors
+        int dx[] = {0, 0, 1, -1};
+        int dy[] = {1, -1, 0, 0};
+
+        for (int i = 0; i < 4; ++i) {
+            int neighborX = node.xCoord + dx[i];
+            int neighborY = node.yCoord + dy[i];
+
+            // Check if neighbor is out of bounds (considered a wall)
+            if (neighborX < 1 || neighborX > widthGrid ||
+                neighborY < 1 || neighborY > heightGrid) {
+                wallCount++;
+            } else {
+                // Check if neighbor is an obstacle
+                int neighborIndex = coordToIndex(neighborX, neighborY, widthGrid);
+                if (gridNodes.Nodes[neighborIndex].obstacle) {
+                    wallCount++;
+                }
+            }
+        }
+
+        // A dead end is a non-wall cell with 3 walls/boundaries around it
+        if (wallCount == 3) {
+            deadEnds++;
+        }
+    }
+    return deadEnds;
+} // baki kaam aba paxiii , tmkoc herxu chiya khadai 
