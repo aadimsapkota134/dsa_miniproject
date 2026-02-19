@@ -488,7 +488,7 @@ void GridView::handleClickedPoint(const QPointF& point)
             obstacleElements->replace(clickedIndex, nullQPoint);
 
             // Making sure the previous end point is set as free in the backend grid
-            gridNodes.Nodes[previousEndGridIndex].obstacle = true ;
+            gridNodes.Nodes[previousEndGridIndex].obstacle = false ; // Aayusha gadhiii logic mistake bho
 
         } else  // the clicked point is an obstacle
         {
