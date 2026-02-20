@@ -164,7 +164,7 @@ void MainWindow::on_runButton_clicked()
             pathAlgorithm.resumeAlgorithm();
             gridView.setSimulationRunning(true);
             pathAlgorithm.running = true; // Explicitly set running to true
-            ui->runButton->setChecked(false);
+            ui->runButton->setChecked(true); //yaha true hunthyo yrr, ko ho false lekhne
             ui->runButton->setText(QString("Pause PathFinding")); 
         }
     } else {
@@ -178,7 +178,7 @@ void MainWindow::on_runButton_clicked()
         pathAlgorithm.widthGrid = gridView.widthGrid;
 
         // Setting the run button as checkable and checked (setCheckable should ideally be in UI XML or constructor)
-        ui->runButton->setCheckable();
+        ui->runButton->setCheckable(true); //yo kun gadha le parameter pass na garya ho
         ui->runButton->setChecked(true); 
         ui->runButton->setText(QString("Pause PathFinding")); 
 
@@ -238,7 +238,7 @@ void MainWindow::generateMazeWithAlgorithm(int algorithmEnum)
 void MainWindow::on_resetButton_clicked()
 {
     // Calling populate grid with same previous arrangement
-    gridView.populateGridMap(gridView.getCurrentArrangement());
+    gridView.populateGridMap(gridView.getCurrentArrangement(true)); //grid map populate garne bela parameter naii pathako xaina, dhukka sarbesh ko kaam ho
 
     // Reset pathfinding flags and button state on reset
     pathAlgorithm.running = false;
@@ -253,12 +253,13 @@ void MainWindow::on_resetButton_clicked()
     pathAlgorithm.setCurrentAlgorithm(NOALGO);
 
 
-    ui->algorithmsBox->setCurrentIndex(-1); // Deselects any algorithm in the combobox
+    ui->algorithmsBox->setCurrentIndex(-1); // eselect any algorithm in the combobox
 
     // Reset button text for run button
     ui->runButton->setText("Start PathFinding");
 
-    
+    mazeCurrentlyGenerated = false; //reset the flag on grid reset
+    //reset na gari proceed garya xa feri akkadaa haru
 
 
    
@@ -278,3 +279,71 @@ void MainWindow::on_algorithmsBox_currentIndexChanged(int index)
     pathAlgorithm.setCurrentAlgorithm(static_cast<ALGOS>(index));
 }
 //yaha samma mero aaba dada koooo
+void MainWindow::onAlgorithmCompleted()
+{
+    gridView.setSimulationRunning(false);
+    pathAlgorithm.setSimulationOnGoing(false); 
+    ui->runButton->setChecked(false);
+    ui->runButton->setText(QString("Start PathFinding")); 
+
+    // If the completed algorithm was a maze generation algo
+    if (pathAlgorithm.getCurrentAlgorithm() == KRUSKAL){
+        mazeCurrentlyGenerated = true; // maze generation paxi flag true garna paryo
+    }
+
+
+}
+
+void MainWindow::on_dialWidth_valueChanged(int value)
+{
+    ui->lcdWidth->display(value);
+
+}
+
+
+void MainWindow::on_dialHeight_valueChanged(int value)
+{
+    ui->lcdHeight->display(value);
+
+}
+
+
+void MainWindow::on_sliderMarker_valueChanged(int value)
+{
+    ui->lcdMarker->display(value);
+}
+
+
+void MainWindow::on_sliderMarker_sliderReleased()
+{
+    //  new marker size
+    gridView.markerSize = ui->lcdMarker->value();
+
+    //  marker size of elements
+    gridView.setElementsMarkerSize();
+}
+
+
+void MainWindow::on_dialWidth_sliderReleased()
+{
+    //  new width of the grid
+    gridView.widthGrid = ui->lcdWidth->value();
+
+    // Resetting the gridview
+    gridView.populateGridMap(gridView.getCurrentArrangement(), true);
+}
+
+
+void MainWindow::on_dialHeight_sliderReleased()
+{
+    // new height of the grid
+    gridView.heightGrid = ui->lcdHeight->value();
+
+    // Resetting the gridview
+    gridView.populateGridMap(gridView.getCurrentArrangement(), true);
+
+}
+
+//kaam sakiyo haii yesko
+
+
