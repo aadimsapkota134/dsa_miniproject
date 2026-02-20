@@ -283,6 +283,7 @@ void MainWindow::onAlgorithmCompleted()
 {
     gridView.setSimulationRunning(false);
     pathAlgorithm.setSimulationOnGoing(false); 
+    pathAlgorithm.running = false; 
     ui->runButton->setChecked(false);
     ui->runButton->setText(QString("Start PathFinding")); 
 
@@ -331,6 +332,8 @@ void MainWindow::on_dialWidth_sliderReleased()
 
     // Resetting the gridview
     gridView.populateGridMap(gridView.getCurrentArrangement(), true);
+    //Reset flag if grid dimensions change
+    mazeCurrentlyGenerated = false; // yeti ni gardainan yr
 }
 
 
@@ -338,12 +341,15 @@ void MainWindow::on_dialHeight_sliderReleased()
 {
     // new height of the grid
     gridView.heightGrid = ui->lcdHeight->value();
-
+mazeCurrentlyGenerated = false; // grid dimension change garda, flag reset garna pardaina 
     // Resetting the gridview
     gridView.populateGridMap(gridView.getCurrentArrangement(), true);
 
 }
 
 //kaam sakiyo haii yesko
-
+void MainWindow::on_speedSpinBox_valueChanged(int arg1)
+{
+    pathAlgorithm.setSpeedVizualization(ui->speedSpinBox->maximum() / arg1);
+} // mero kaam 
 
