@@ -192,7 +192,6 @@ void PathAlgorithm::stopAlgorithm()
 }
 
 // BFS Algorithm
-// In PathAlgorithm.cpp
 
 void PathAlgorithm::performBFSAlgorithm(QPromise<int>& promise)
 {
@@ -328,3 +327,129 @@ void PathAlgorithm::performBFSAlgorithm(QPromise<int>& promise)
 
     qDebug() << "DEBUG: " << algorithmToString(currentAlgorithm) << ": Emitted algorithmCompleted() and pathfindingSearchCompleted()."; // Add this line
 } // mero part ko sakiyooo
+
+// dfs aad
+
+void PathAlgorithm::performDFSAlgorithm(QPromise<int>& promise)
+{
+    qDebug() << "DFS: Algorithm started in worker thread:" << QThread::currentThreadId();
+    promise.suspendIfRequested();
+    if (promise.isCanceled())
+    {
+        emit pathfindingSearchCompleted(0, 0); // Emittin with current stats on cancel
+        return;
+    }
+    bool reachEnd = false;
+    std::stack<Node*> nextNodesStack; 
+    std::map<int, int> parentMap; // Mappin child index to parent index
+
+    Node* startNode = &(gridNodes.Nodes[gridNodes.startIndex]);
+    nextNodesStack.push(startNode);
+    gridNodes.Nodes[gridNodes.startIndex].visited = true; // Mark start as visited
+    parentMap[gridNodes.startIndex] = -1; // No parent for start node
+
+    int nodesVisitedCount = 0; // Counter for visited nodes
+
+    while(!nextNodesStack.empty())
+    {
+        promise.suspendIfRequested();
+        if (promise.isCanceled()) {
+            qDebug() << "DFS: Algorithm cancelled during loop.";
+            emit pathfindingSearchCompleted(nodesVisitedCount, 0); // Emit with current stats on cancel
+            return;
+        }
+
+        Node* currentNode = nextNodesStack.top();
+        nextNodesStack.pop();
+        nodesVisitedCount++; // Increment when a node is popped and processed
+
+        int currentIndex = coordToIndex(currentNode->xCoord, currentNode->yCoord, widthGrid);
+
+        if (currentIndex != gridNodes.startIndex && currentIndex != gridNodes.endIndex) {
+            emit updatedScatterGridView(VISIT, currentIndex);
+        }
+
+        if (currentIndex == gridNodes.endIndex)
+        {
+            std::cerr << "Reached end \n";
+            reachEnd = true;
+            break;
+        }
+
+        // Manual neighbor retrieval for DFS
+        int dx[] = {0, 0, 1, -1}; // Up, Down, Right, Left
+        int dy[] = {1, -1, 0, 0};
+
+        for (int i = 0; i < 4; ++i) {
+            int neighborX = currentNode->xCoord + dx[i];
+            int neighborY = currentNode->yCoord + dy[i];
+
+            if (neighborX >= 1 && neighborX <= widthGrid &&
+                neighborY >= 1 && neighborY <= heightGrid)
+            {
+                int neighborIndex = coordToIndex(neighborX, neighborY, widthGrid);
+                Node* neighborNode = &(gridNodes.Nodes[neighborIndex]);
+
+                if (!neighborNode->visited && !neighborNode->obstacle) {
+                    neighborNode->visited = true; // Marking as 'visited' when added to stack
+                    nextNodesStack.push(neighborNode);
+                    parentMap[neighborIndex] = currentIndex; // Store parent
+
+                    if (neighborIndex != gridNodes.endIndex) {
+                        emit updatedScatterGridView(NEXT, neighborIndex);
+                    }
+                }
+            }
+        }
+    }
+
+    int pathLength = 0;
+    if (reachEnd){
+        endReached = true;
+
+        // Path reconstruction and pathLength calculation
+        std::vector<int> pathIndices;
+        int currentPathIndex = gridNodes.endIndex;
+        while (currentPathIndex != -1) {
+            pathIndices.insert(pathIndices.begin(), currentPathIndex);
+            if (parentMap.count(currentPathIndex)) {
+                currentPathIndex = parentMap[currentPathIndex];
+            } else {
+                currentPathIndex = -1;
+            }
+        }
+        pathLength = pathIndices.size() > 0 ? pathIndices.size() - 1 : 0;
+
+        emit pathfindingSearchCompleted(nodesVisitedCount, pathLength);
+        qDebug() << "DFS: Pathfinding search completed. Emitting pathfindingSearchCompleted()";
+
+        // Visualizing the path
+        emit updatedLineGridView(QPointF(gridNodes.Nodes[gridNodes.endIndex].xCoord, gridNodes.Nodes[gridNodes.endIndex].yCoord), true, true);
+
+        for (size_t i = pathIndices.size() - 1; i > 0; --i) {
+            promise.suspendIfRequested();
+            if (promise.isCanceled()) {
+                qDebug() << "DFS: Algorithm cancelled during visualization.";
+                break;
+            }
+            int pathNodeIndex = pathIndices[i];
+            emit updatedScatterGridView(PATH, pathNodeIndex);
+            emit updatedLineGridView(QPointF(gridNodes.Nodes[pathNodeIndex].xCoord, gridNodes.Nodes[pathNodeIndex].yCoord), true, false);
+        }
+        emit updatedLineGridView(QPointF(gridNodes.Nodes[gridNodes.startIndex].xCoord, gridNodes.Nodes[gridNodes.startIndex].yCoord), true, false);
+
+    }else{
+        endReached = false;
+        emit pathfindingSearchCompleted(nodesVisitedCount, 0);
+        qDebug() << "DFS: Pathfinding search not found. Emitting pathfindingSearchCompleted()";
+    }
+
+    // Resetting visited flags for next run
+    for(Node& node: gridNodes.Nodes) {
+        node.visited = false;
+        node.nextUp = false; 
+    }
+
+    emit algorithmCompleted();
+    qDebug() << "DFS: Algorithm completed (visualization sakiyo). Emitting algorithmCompleted()";
+}
