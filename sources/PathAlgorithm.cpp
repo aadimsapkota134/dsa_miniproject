@@ -453,3 +453,37 @@ void PathAlgorithm::performDFSAlgorithm(QPromise<int>& promise)
     emit algorithmCompleted();
     qDebug() << "DFS: Algorithm completed (visualization sakiyo). Emitting algorithmCompleted()";
 }
+
+
+// Maze generation ko laagi, garnai birsexu
+void PathAlgorithm::FillNeighboursNode(Node& node)
+{
+
+    // east: adding +1 to x:
+    if (node.xCoord + 1 <= widthGrid)
+    {
+        int eastIndex = coordToIndex(node.xCoord + 1, node.yCoord, widthGrid);
+        node.neighbours.push_back(&(gridNodes.Nodes[eastIndex]));
+    }
+
+    // South: adding -1 to y:
+    if (node.yCoord - 1 >= 1)
+    {
+        int southIndex = coordToIndex(node.xCoord, node.yCoord -1, widthGrid);
+        node.neighbours.push_back(&(gridNodes.Nodes[southIndex]));
+    }
+
+    // West: adding -1 to x:
+    if (node.xCoord - 1 >= 1)
+    {
+        int westIndex = coordToIndex(node.xCoord - 1, node.yCoord, widthGrid);
+        node.neighbours.push_back(&(gridNodes.Nodes[westIndex]));
+    }
+
+    // north: adding +1 to y:
+    if (node.yCoord + 1 <= heightGrid)
+    {
+        int northIndex = coordToIndex(node.xCoord, node.yCoord + 1, widthGrid);
+        node.neighbours.push_back(&(gridNodes.Nodes[northIndex]));
+    }
+}
